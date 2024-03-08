@@ -1,23 +1,26 @@
 import SwiftUI
 
+// Estructura que representa un elemento de gasto
 struct ExpenseItem: Identifiable, Codable {
-    let id = UUID()
-    let amount: Double
-    let category: String
-    let date: Date
+    let id = UUID()             // Identificador único del gasto
+    let amount: Double          // Cantidad gastada
+    let category: String        // Categoría del gasto
+    let date: Date              // Fecha del gasto
 }
 
+// Clase que gestiona los gastos
 class Expenses: ObservableObject {
-    @Published var items = [ExpenseItem]() {
+    @Published var items = [ExpenseItem]() {   // Lista de gastos
         didSet {
-            saveExpenses()
+            saveExpenses()                      // Guardar los cambios en los gastos
         }
     }
     
     init() {
-        loadExpenses()
+        loadExpenses()                          // Cargar los gastos almacenados
     }
     
+    // Cargar los gastos almacenados previamente
     private func loadExpenses() {
         if let data = UserDefaults.standard.data(forKey: "expenses") {
             let decoder = JSONDecoder()
@@ -26,9 +29,10 @@ class Expenses: ObservableObject {
                 return
             }
         }
-        self.items = []
+        self.items = []                             // Si no hay gastos almacenados, iniciar con una lista vacía
     }
     
+    // Guardar los gastos
     private func saveExpenses() {
         let encoder = JSONEncoder()
         if let encoded = try? encoder.encode(items) {
@@ -36,6 +40,7 @@ class Expenses: ObservableObject {
         }
     }
     
+    // Calcular el total diario de gastos para una fecha dada
     func dailyTotal(for date: Date) -> Double {
         let total = items.reduce(0.0) { result, item in
             if Calendar.current.isDate(item.date, inSameDayAs: date) {
@@ -47,6 +52,7 @@ class Expenses: ObservableObject {
         return total
     }
     
+    // Calcular el total mensual de gastos para una fecha dada
     func monthlyTotal(for date: Date) -> Double {
         let startOfMonth = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: date))!
         let endOfMonth = Calendar.current.date(byAdding: DateComponents(month: 1, day: -1), to: startOfMonth)!
@@ -54,43 +60,48 @@ class Expenses: ObservableObject {
         return total
     }
     
+    // Obtener los gastos para una fecha dada
     func expensesForDate(_ date: Date) -> [ExpenseItem] {
         items.filter { Calendar.current.isDate($0.date, inSameDayAs: date) }
     }
 }
 
+// Vista principal
 struct ContentView: View {
-    @ObservedObject var expenses = Expenses()
-    @State private var showingAddExpense = false
+    @ObservedObject var expenses = Expenses()         // Gastos observables
+    @State private var showingAddExpense = false      // Estado para mostrar el formulario de añadir gasto
     
     var body: some View {
+        // Vista de pestañas
         TabView {
+            // Vista de lista de gastos
             NavigationView {
                 List {
                     ForEach(expenses.items) { item in
+                        // Elemento de la lista de gastos
                         HStack {
                             VStack(alignment: .leading) {
-                                Text("\(item.amount, specifier: "%.2f") €")
+                                Text("\(item.amount, specifier: "%.2f") €")    // Cantidad del gasto
                                     .font(.headline)
-                                Text(item.category)
+                                Text(item.category)                             // Categoría del gasto
                             }
                             Spacer()
-                            Text("\(formattedDate(from: item.date))")
+                            Text("\(formattedDate(from: item.date))")          // Fecha del gasto
                                 .font(.caption)
                         }
                     }
-                    .onDelete(perform: removeItems)
+                    .onDelete(perform: removeItems)                            // Eliminar gastos
                 }
                 .navigationBarTitle("Gastos")
                 .navigationBarItems(trailing:
                     Button(action: {
-                        self.showingAddExpense = true
+                        self.showingAddExpense = true                          // Mostrar formulario de añadir gasto
                     }) {
                         Image(systemName: "plus")
                     }
                 )
                 .sheet(isPresented: $showingAddExpense) {
-                    AddView(expenses: self.expenses)
+                    AddView(expenses: self.expenses)                          // Vista para añadir gasto
                 }
             }
             .tabItem {
@@ -98,8 +109,9 @@ struct ContentView: View {
                 Text("Gastos")
             }
             
+            // Vista de calendario
             NavigationView {
-                CalendarView(expenses: expenses)
+                CalendarView(expenses: expenses)                              // Vista de calendario
             }
             .tabItem {
                 Image(systemName: "calendar")
@@ -109,10 +121,12 @@ struct ContentView: View {
         .environment(\.locale, .init(identifier: "es"))
     }
     
+    // Eliminar gastos de la lista
     func removeItems(at offsets: IndexSet) {
         expenses.items.remove(atOffsets: offsets)
     }
     
+    // Obtener fecha formateada como string
     func formattedDate(from date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "dd/MM/yyyy HH:mm"
@@ -120,9 +134,10 @@ struct ContentView: View {
     }
 }
 
+// Vista de calendario
 struct CalendarView: View {
-    @ObservedObject var expenses: Expenses
-    @State private var selectedDate = Date()
+    @ObservedObject var expenses: Expenses       // Gastos observables
+    @State private var selectedDate = Date()      // Fecha seleccionada
     
     var body: some View {
         VStack {
@@ -135,14 +150,15 @@ struct CalendarView: View {
             
             List {
                 ForEach(expenses.expensesForDate(selectedDate)) { item in
+                    // Elemento de la lista de gastos
                     HStack {
                         VStack(alignment: .leading) {
-                            Text("\(item.amount, specifier: "%.2f") €")
+                            Text("\(item.amount, specifier: "%.2f") €")    // Cantidad del gasto
                                 .font(.headline)
-                            Text(item.category)
+                            Text(item.category)                             // Categoría del gasto
                         }
                         Spacer()
-                        Text("\(formattedDate(from: item.date))")
+                        Text("\(formattedDate(from: item.date))")          // Fecha del gasto
                             .font(.caption)
                     }
                 }
@@ -152,11 +168,13 @@ struct CalendarView: View {
         }
     }
     
+    // Obtener total diario de gastos como string
     func dailyTotalString(for date: Date) -> String {
         let total = expenses.dailyTotal(for: date)
         return String(format: "%.2f", total)
     }
     
+    // Obtener fecha formateada como string
     func formattedDate(from date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "dd/MM/yyyy HH:mm"
@@ -164,12 +182,13 @@ struct CalendarView: View {
     }
 }
 
+// Vista para añadir gasto
 struct AddView: View {
     @Environment(\.presentationMode) var presentationMode
-    @ObservedObject var expenses: Expenses
-    @State private var amount = ""
-    @State private var category = ""
-    @State private var selectedDate = Date()
+    @ObservedObject var expenses: Expenses       // Gastos observables
+    @State private var amount = ""                // Cantidad del gasto
+    @State private var category = ""              // Categoría del gasto
+    @State private var selectedDate = Date()      // Fecha del gasto
     
     var body: some View {
         NavigationView {
@@ -186,8 +205,8 @@ struct AddView: View {
                     Button("Guardar") {
                         if let actualAmount = Double(self.amount) {
                             let item = ExpenseItem(amount: actualAmount, category: self.category, date: self.selectedDate)
-                            self.expenses.items.append(item)
-                            self.presentationMode.wrappedValue.dismiss()
+                            self.expenses.items.append(item)             // Añadir nuevo gasto a la lista
+                            self.presentationMode.wrappedValue.dismiss() // Cerrar vista de añadir gasto
                         }
                     }
                 }
@@ -197,8 +216,9 @@ struct AddView: View {
     }
 }
 
+// Estructura que proporciona una vista previa de ContentView
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView()
+        ContentView()   // Muestra una vista previa de ContentView
     }
 }
